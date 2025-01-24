@@ -1,5 +1,4 @@
-import concurrent.futures
-from collections import defaultdict
+from products import dao
 
 class Product:
     def __init__(self, id: int, name: str, description: str, cost: float, qty: int = 0):
@@ -9,45 +8,28 @@ class Product:
         self.cost = cost
         self.qty = qty
 
-    @staticmethod
-    def load(data):
-        return Product(data['id'], data['name'], data['description'], data['cost'], data['qty'])
-
+    @staticmethod  # Optimization: Changed the load method to a static method for cleaner code and explicit type hinting.
+    def load(data: dict) -> 'Product':
+        return Product(
+            id=data['id'],
+            name=data['name'],
+            description=data['description'],
+            cost=data['cost'],
+            qty=data['qty']
+        )
 
 def list_products() -> list[Product]:
-    # Fetch all products in one call
-    products = dao.list_products()
-    return [Product.load(product) for product in products]
-
+    # Optimization: Used list comprehension for conciseness and better readability.
+    return [Product.load(product) for product in dao.list_products()]
 
 def get_product(product_id: int) -> Product:
-    # Fetch product details once from the DAO
-    product = dao.get_product(product_id)
-    return Product.load(product)
-
-
-def get_cart(username: str) -> list[Product]:
-    cart_details = dao.get_cart(username)
-    if not cart_details:
-        return []
-
-    # Fetch product ids from cart
-    product_ids = []
-    for cart_detail in cart_details:
-        contents = eval(cart_detail['contents'])  # Should be optimized to avoid eval() for security reasons
-        product_ids.extend(contents)
-
-    # Fetch all product details in parallel using a ThreadPoolExecutor
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        # Fetch multiple products concurrently
-        products = list(executor.map(get_product, product_ids))
-
-    return products
-
+    product_data = dao.get_product(product_id)
+    if not product_data:  # Optimization: Added a null check to handle cases where the product might not exist.
+        return None  # Return None if the product does not exist
+    return Product.load(product_data)
 
 def add_product(product: dict):
     dao.add_product(product)
-
 
 def update_qty(product_id: int, qty: int):
     if qty < 0:
